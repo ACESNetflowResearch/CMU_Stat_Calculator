@@ -205,54 +205,55 @@ end
 
 begin
     con = Mysql.new 'localhost', 'root', 'cyberaces', 'netflow_db' #open connection
-    all_src_ips = con.query("SELECT DISTINCT src_IP FROM netflow_full") #get all the distinct src IPS
+    all_src_ips = con.query("SELECT DISTINCT src_IP FROM netflow_full_2") #get all the distinct src IPS
 
     #for each src IP, caclulate it's statistics by grabbing all its flows and processing them
     all_src_ips.each do |ip|
 	   c = IP_Stat_Calculator.new
-	   ip_data = con.query("SELECT * FROM netflow_full WHERE src_IP = '#{ip[0]}'")
+	   ip_data = con.query("SELECT * FROM netflow_full_2 WHERE src_IP = '#{ip[0]}'")
 	   ip_data.each do |flow|
 		  #total flows count
 		  c.total_flows += 1
 
-		  #for calculation 1 
+		  #for calculation rt_w/o_ACK 
 		  c.has_no_ACK_flag(flow[7])
 
-		  #for calculations 2,11,12,14
+		  #for calculations rt_under_3, rt_std_flags, rt_over_60, rt_std_pttrn
 		  c.has_standard_flags(flow[7])
 		  c.has_under_3_packets(flow[9].to_i)
 		  c.has_over_60_Bpp(flow[13].to_i)
 		  c.has_standard_pattern(flow[7], flow[13].to_i, flow[9].to_i)
 
-		  #for calculations 15,18
+		  #for calculations rt_bksctr_flags, rt_bksctr_pttrn
 		  c.has_backscatter_flags(flow[7])
 		  c.has_backscatter_pattern(flow[7], flow[13].to_i, flow[9].to_i)
 
-		  #for calculations 9, 17
+		  #for calculations num_uniq_srcp, rt_srcp
 		  c.src_port_hash[flow[4]] = 1
 
-		  #for calculation 3
+		  #for calculation max_ips_1sub
 		  c.subnet_identify(flow[5])
 
-		  #for calculation 4-8,10,13,16
+		  #for calculations max_high, max_low, max_cnsc_high, max_cnsc_low
+		  #also for med_pack/dst, avg_srcp/dst, rt_dst, num_uniq_dsts
 		  c.calculate_initial_dst_IP_stats(flow)
 	   end
 
 	   c.calculate_end_dst_IP_stats()
 	   puts ("IP: #{ip[0]}")
-	   puts ("W/o_ACK_Ratio: #{c.without_ACK_cnt.to_f/c.total_flows.to_f} Under_3_packets_ratio: #{c.under_3_packets_cnt.to_f/c.total_flows.to_f}") #1,2
-	   puts ("Most_IPs_in_one_subnet: #{c.subnet_hash.values.sort.last}") #3
-	   puts ("Max_high_ports: #{c.max_high_ports} Max_low_ports: #{c.max_low_ports}") #4,5
-	   puts ("Max_consec_high: #{c.max_consec_high} Max_consec_low: #{c.max_consec_low}") #6,7
-	   puts ("Num_dst_IPs: #{c.dst_IP_hash.length} Num_src_ports: #{c.src_port_hash.length}") #8,9
-	   puts ("Avg_src_ports_per_dst_IP: #{c.avg_src_ports_per_dst_IP}") #10
-	   puts ("Std_flags_ratio: #{c.standard_flags_cnt.to_f/c.total_flows.to_f} Over_60_ratio: #{c.over_60_Bpp_cnt.to_f/c.total_flows.to_f}") #11,12
-	   puts ("Median_packets_per_dst_IP: #{c.median_packets_per_dst_IP}") #13
-	   puts ("Std_pat_ratio: #{c.standard_pattern_cnt.to_f/c.total_flows.to_f}") #14
-	   puts ("Bcsctr_pat_ratio: #{c.backscatter_pattern_cnt.to_f/c.total_flows.to_f}") #15
-	   puts ("Num_dst_Ips_to_flows: #{c.dst_IP_hash.length.to_f/c.total_flows.to_f}") #16
-	   puts ("Num_src_ports_to_flows: #{c.src_port_hash.length.to_f/c.total_flows.to_f}") #17
-	   puts ("Bcsctr_flags_ratio: #{c.backscatter_flags_cnt.to_f/c.total_flows.to_f}") #18
+	   puts ("rt_w/o_ACK: #{c.without_ACK_cnt.to_f/c.total_flows.to_f} rt_under_3: #{c.under_3_packets_cnt.to_f/c.total_flows.to_f}") #1,2
+	   puts ("max_ips_1sub: #{c.subnet_hash.values.sort.last}") #3
+	   puts ("max_high: #{c.max_high_ports} max_low: #{c.max_low_ports}") #4,5
+	   puts ("max_cnsc_high: #{c.max_consec_high} max_cnsc_low: #{c.max_consec_low}") #6,7
+	   puts ("num_uniq_dsts: #{c.dst_IP_hash.length} num_uniq_srcp: #{c.src_port_hash.length}") #8,9
+	   puts ("avg_srcp/dst: #{c.avg_src_ports_per_dst_IP}") #10
+	   puts ("rt_std_flags: #{c.standard_flags_cnt.to_f/c.total_flows.to_f} rt_over_60: #{c.over_60_Bpp_cnt.to_f/c.total_flows.to_f}") #11,12
+	   puts ("med_pack/dst: #{c.median_packets_per_dst_IP}") #13
+	   puts ("rt_std_pttrn: #{c.standard_pattern_cnt.to_f/c.total_flows.to_f}") #14
+	   puts ("rt_bksctr_pttrn: #{c.backscatter_pattern_cnt.to_f/c.total_flows.to_f}") #15
+	   puts ("rt_dst: #{c.dst_IP_hash.length.to_f/c.total_flows.to_f}") #16
+	   puts ("rt_srcp: #{c.src_port_hash.length.to_f/c.total_flows.to_f}") #17
+	   puts ("rt_bksctr_flags: #{c.backscatter_flags_cnt.to_f/c.total_flows.to_f}") #18
     end
 
 rescue Mysql::Error => e
