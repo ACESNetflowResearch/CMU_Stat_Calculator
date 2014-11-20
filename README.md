@@ -1,0 +1,1 @@
+Class and test driver to read through netflow statistics from a DB and calculation netflow features form the paper "Scan Detection on Very Large Networks Using Logistic Regression Modeling - CMU - 2006" on a by IP basis.
